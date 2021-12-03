@@ -5,11 +5,11 @@ type Props = {
   dragOverlay?: boolean;
   disabled?: boolean;
   columns: number;
-  fake?: boolean;
+  isEmpty?: boolean;
 };
 
 
-const Container = styled.div<{ columns: number; dragOverlay?: boolean; fake?: boolean; }>`
+const Container = styled.div<{ columns: number; dragOverlay?: boolean; isEmpty?: boolean; }>`
   border: 2px solid black;
   border-radius: 10px;
   width: 100%;
@@ -19,8 +19,10 @@ const Container = styled.div<{ columns: number; dragOverlay?: boolean; fake?: bo
   align-items: center;
   box-sizing: border-box;
 
-  ${({ columns, dragOverlay, fake }) => {
-    if (fake) {
+  font-size: larger;
+
+  ${({ columns, dragOverlay, isEmpty }) => {
+    if (isEmpty) {
       return css`
         background-color: transparent;
         border-style: dashed;
@@ -41,9 +43,9 @@ const Container = styled.div<{ columns: number; dragOverlay?: boolean; fake?: bo
   }}
 `;
 
-export const Item = ({ columns, dragOverlay, fake, children }: React.PropsWithChildren<Props>) => {
+export const Item = ({ columns, dragOverlay, isEmpty, children }: React.PropsWithChildren<Props>) => {
   return (
-    <Container dragOverlay={dragOverlay} columns={columns} fake={fake}>
+    <Container dragOverlay={dragOverlay} columns={columns} isEmpty={isEmpty}>
       {children}
     </Container>
   );

@@ -48,10 +48,11 @@ const HorizontalAreas = ({ columns, rowIndex, side }: { columns: number, rowInde
   const areas: React.ReactNode[] = [];
 
   if (isActiveWide) {
+    const isActive = active?.data.current?.rowIndex === rowIndex;
     const prevActive = active?.data.current?.rowIndex === rowIndex - 1;
     const nextActive = active?.data.current?.rowIndex === rowIndex + 1;
-    const isActive = active?.data.current?.rowIndex === rowIndex;
 
+    // Не подсвечиваем позиции рядом с активным айтемом (только для широких айтемов)
     const canDrop = !isActive && ((side === 'bottom' && !nextActive) || (side === 'top' && !prevActive));
   
     const wideId = `${rowIndex},0,${side},wide`;

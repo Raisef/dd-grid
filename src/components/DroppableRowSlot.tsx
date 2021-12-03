@@ -26,6 +26,23 @@ const DroppableSlotContainer = styled.div<{ columns: number; }>`
   ${({ columns }) => columns > 1 && `grid-column-start: span ${columns};`}
   position: relative;
   height: 150px;
+`;
+
+const DeleteButton = styled.button`
+  position: absolute;
+  right: 40px;
+  top: 30px;
+  border: 1px solid black;
+  border-radius: 12px;
+  padding: 8px;
+  background: white;
+
+  cursor: pointer;
+
+  &:hover {
+    color: #99313a;
+    background: #eeeeee;
+  }
 `
 
 type SlotProps = {
@@ -40,10 +57,13 @@ export const DroppableRowSlot = ({ id, columns, index, isEmpty, onDelete, childr
   const { active } = useDndContext();
   const { rowIndex, rowColumns, emptyIndexes } = useContext(DroppableRowContext);
 
+  const handleDelete = () => {
+    onDelete?.(rowIndex, index, columns);
+  };
+
   const activeColumns = active?.data?.current?.columns;
   const isActiveWide = activeColumns === rowColumns;
   const isWide = columns === rowColumns;
-  const isFirst = index === 0;
   const isLast = index + 1 === rowColumns;
 
   const { rowIndex: activeRowIndex, index: activeIndex } = active?.data.current || {};
@@ -51,22 +71,33 @@ export const DroppableRowSlot = ({ id, columns, index, isEmpty, onDelete, childr
   const isSameIndex = activeIndex === index;
   const isSamePosition = isSameRow && isSameIndex;
 
-  const isLeftSideEmpty = isLast && isEmpty;
-  const isRightSideEmpty = isFirst && isEmpty;
+  const isLastAndEmpty = isLast && isEmpty;
 
+  // Не подсвечиваем боковые позиции для широких блоков, а так же рядом с активным слотом
   const canDropBase = !(isWide || isActiveWide || isSamePosition);
   const isPrevEmpty = emptyIndexes.includes(index - 1);
 
-  const canDropLeft = canDropBase && !isLeftSideEmpty && (!isSameRow || index !== activeIndex + 1) && !isPrevEmpty;
-  const canDropRight = canDropBase && !isRightSideEmpty && isLast && (isSameRow || emptyIndexes.length >= activeColumns);
+  /*
+    Не подсвечиваем позицию слева, если она предыдущий слот активный,
+    либо, если этот слот пустой и последний в строке
+  */
+  const canDropLeft = canDropBase && !isLastAndEmpty && (!isSameRow || index !== activeIndex + 1) && !isPrevEmpty;
+  
+  /* 
+    Подсвечиваем позицию справа только для последнего слота,
+    и только в случае когда перемещение происходит внутри строки,
+    либо если есть свободные ячейки
+  */
+  const canDropRight = canDropBase && isLast && (isSameRow || emptyIndexes.length >= activeColumns);
 
   return (
     <DroppableSlotContainer columns={columns}>
+      {!isEmpty && onDelete && <DeleteButton onClick={handleDelete}>Удалить</DeleteButton>}
       <DroppablePosition side="left">
         <Droppable zoneId={`${id}-left`} canDrop={canDropLeft} data={{ rowIndex: rowIndex, index, side: 'left' }} />
       </DroppablePosition>
       
-      <Draggable data={{ rowIndex, index }} id={id} columns={columns}>
+      <Draggable data={{ rowIndex, index }} id={id} columns={columns} disabled={isEmpty}>
         {children}
       </Draggable>
       
@@ -75,4 +106,4 @@ export const DroppableRowSlot = ({ id, columns, index, isEmpty, onDelete, childr
       </DroppablePosition>
     </DroppableSlotContainer>
   );
-}
+};

@@ -12,43 +12,43 @@ export type MockData = MockItem[];
 
 export const DroppablesMap = {
   'droppable-0': {
-    content: 'droppable-0',
+    content: 'КАРУСЕЛЬ',
     columns: 2,
   },
   'droppable-1': {
-    content: 'droppable-1',
+    content: 'КУРС ВАЛЮТ',
     columns: 1,
   },
   'droppable-2': {
-    content: 'droppable-2',
+    content: 'ВРЕМЯ',
     columns: 1,
   },
   'droppable-3': {
-    content: 'droppable-3',
+    content: 'КАРТА *9123',
     columns: 1,
   },
   'droppable-4': {
-    content: 'droppable-4',
+    content: 'ИЗБРАННОЕ',
     columns: 2,
   },
   'droppable-5': {
-    content: 'droppable-5',
+    content: 'АВТОКРЕДИТ *1231',
     columns: 1,
   },
   'droppable-6': {
-    content: 'droppable-6',
+    content: 'ТРОЙКА',
     columns: 1,
   },
   'droppable-7': {
-    content: 'droppable-7',
+    content: 'ИСТОРИЯ ОПЕРАЦИЙ',
     columns: 2,
   },
   'droppable-8': {
-    content: 'droppable-8',
+    content: 'БРОКЕРСКИЙ СЧЁТ *4928',
     columns: 1,
   },
   'droppable-9': {
-    content: 'droppable-9',
+    content: 'ВИДЖЕТ',
     columns: 1,
   },
 } as const;
@@ -59,7 +59,7 @@ export type DroppableRowContentType = DroppableType | null;
 
 export const GRID_COLUMNS_COUNT = 2;
 
-export const dataRows: Array<Array<DroppableRowContentType>> = [
+export const initialRows: Array<Array<DroppableRowContentType>> = [
   ['droppable-0', 'droppable-0'],
   ['droppable-1', 'droppable-2'],
   ['droppable-3', null         ],

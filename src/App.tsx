@@ -1,193 +1,118 @@
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent } from '@dnd-kit/core';
-import React, { useState } from 'react';
+import { DndContext, DragOverlay } from '@dnd-kit/core';
+import React from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components/macro';
 
 import { DroppableRow } from './components/DroppableRow';
 import { Item } from './components/Item';
-import { dataRows, DroppableRowContentType, DroppablesMap, GRID_COLUMNS_COUNT } from './constants';
+import { initialRows, DroppableRowContentType, DroppablesMap, GRID_COLUMNS_COUNT } from './constants';
+import { useDragAndDropGrid } from './hooks';
 
 const AppContainer = styled.div`
   margin: 0 auto;
 
-  box-sizing: border-box;
+  * {
+    box-sizing: border-box;
+  }
 `;
 
 const Wrapper = styled.div`
   width: 70%;
+  margin: 0 auto;
 `;
 
-const getNewRow = (key: DroppableRowContentType = null, columns: number = 1, index = 0) => {
-  const newRow: DroppableRowContentType[] = [];
-  let slots = 0;
-  for (let i = 0; i < GRID_COLUMNS_COUNT; i++) {
-    if (i >= index && slots < columns) {
-      newRow.push(key);
-      slots++;
-    } else {
-      newRow.push(null);
-    }
-  }
+const getUnusedItems = (rows: DroppableRowContentType[][]) => {
+  const map = { ...DroppablesMap };
 
-  return newRow;
-};
+  rows.forEach((row) => {
+    row.forEach((item) => {
+      if (item !== null) {
+        delete map[item];
+      }
+    });
+  });
+
+  return Object.keys(map) as DroppableRowContentType[];
+}
+
+const AddingRow = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 230px;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  background: silver;
+  padding: 10px;
+  min-height: 53px;
+
+  box-sizing: border-box;
+
+  &:empty {
+    visibility: hidden;
+    pointer-events: none;
+  }
+`;
+
+const AddItemButton = styled.button`
+  margin-top: 24px;
+
+  border-radius: 12px;
+  border: 1px solid black;
+
+  padding: 8px;
+
+  cursor: pointer;
+`;
 
 function App() {
-  const [rows, setDataRows] = useState<Array<Array<DroppableRowContentType>>>(dataRows);
-  const [activeIndexes, setActiveIndexes] = useState<{ rowIndex: number, index: number } | null>(null);
-
-  const activeItemKey = activeIndexes ? rows[activeIndexes.rowIndex][activeIndexes.index] : null;
-
-  const onDragStart = ({ active }: DragStartEvent) => {
-    if (active?.data.current?.rowIndex == null  || active?.data.current?.index == null) {
-      return;
-    }
-
-    setActiveIndexes({ rowIndex: active.data.current.rowIndex, index: active.data.current.index });
-  };
-
-  const onDragEnd = ({ over, active }: DragEndEvent) => {
-    const { rowIndex: activeRowIndex, index: activeIndex } = activeIndexes || {};
- 
-    setActiveIndexes(null);
-
-    if (!over || activeRowIndex == null || activeIndex == null || activeItemKey == null) {
-      return;
-    }
-
-    const activeColumns = active.data.current?.columns;
-    const overSide = over.data.current?.side;
-
-    const { rowIndex, index } = over.data.current || {};
-    const sameRow = rowIndex === activeRowIndex;
-    const newRows = rows.slice();
-
-    if (rowIndex == null || (index == null && sameRow) || (sameRow && activeIndex === index && (overSide === 'left' || overSide === 'right'))) {
-      return;
-    }
-
-    if (index == null && !sameRow) {
-      let targetIndex = rowIndex;
-
-      if (overSide === 'bottom') {
-        const k = activeRowIndex < rowIndex ? 0 : 1;
-        
-        targetIndex = rowIndex + k;
-      }
-
-      newRows.splice(targetIndex, 0, newRows.splice(activeRowIndex, 1)[0]);
-    }
-    
-    if (index != null) {
-      if (sameRow && (overSide === 'right' || overSide === 'left')) {
-        const newRow = newRows[rowIndex].slice();
-
-        newRow.splice(index, 0, newRow.splice(activeIndex, 1)[0]);
-
-        newRows[rowIndex] = newRow;
-      } else if (overSide.includes('top') || overSide.includes('bottom')) {
-          const targetRowIndex = overSide.includes('top') ? rowIndex : rowIndex + 1;
-          const newRow = getNewRow(activeItemKey, activeColumns, index);
-          let newParentRow = newRows[activeRowIndex];
-
-          if (activeColumns > 1) {
-            newParentRow = newParentRow.fill(null, activeIndex, activeIndex + activeColumns - 1);
-          } else {
-            newParentRow[activeIndex] = null;
-          }
-
-          newRows[activeRowIndex] = newParentRow;
-          newRows.splice(targetRowIndex, 0, newRow);
-      } else {
-        let targetRow = newRows[rowIndex].slice();
-        const newItem = Array(activeColumns).fill(activeItemKey);
-        targetRow.splice(overSide === 'right' ? index + 1 : index, 0, ...newItem);
-
-        let removedEmptyCount = 0;
-
-        const newTargetRow = targetRow.reduceRight<DroppableRowContentType[]>((row, item) => {
-          if (item === null && removedEmptyCount < activeColumns) {
-            removedEmptyCount++;
-            return row;
-          }
-
-          row.unshift(item);
-
-          return row;
-        }, [])
-
-        const extraItems = newTargetRow.splice(GRID_COLUMNS_COUNT);
-        newRows[rowIndex] = newTargetRow;
-
-        let newParentRow = newRows[activeRowIndex];
-        if (activeColumns > 1) {
-          newParentRow = newParentRow.fill(null, activeIndex, activeIndex + activeColumns - 1);
-        } else {
-          newParentRow[activeIndex] = null;
-        }
-
-        newRows[activeRowIndex] = newParentRow;
-
-        if (extraItems.length) {
-          let nextRow = newRows[rowIndex + 1] ? newRows[rowIndex + 1].slice() : getNewRow();
-          const emptySlots = nextRow.reduce((count, item) => item === null ? count + 1 : count, 0);
-
-          if (emptySlots >= extraItems.length) {
-            nextRow.unshift(...extraItems);
-            let slotsToRemove = extraItems.length;
-
-            nextRow = nextRow.filter((item) => {
-              if (item === null && slotsToRemove) {
-                slotsToRemove--;
-                return false;
-              }
-              
-              return true;
-            });
-
-            newRows[rowIndex + 1] = nextRow;
-          } else {
-            for (let i = 0; i < GRID_COLUMNS_COUNT - extraItems.length; i++) {
-              extraItems.push(null);
-            }
-
-            newRows.splice(rowIndex + 1, 0, extraItems);
-          }
-        }
-      }
-    }
-
-    setDataRows(newRows.filter((row) => row.some((item) => item !== null)));
-  };
+  const {
+    activeItem,
+    dataRows,
+    handleDelete,
+    handleDragCancel,
+    handleDragEnd,
+    handleDragStart,
+    addItem,
+  } = useDragAndDropGrid(initialRows, GRID_COLUMNS_COUNT);
 
   return (
-    <AppContainer className="App">
-      <DndContext
-        onDragStart={onDragStart}
-        onDragEnd={onDragEnd}
-        onDragCancel={() => setActiveIndexes(null)}
-      >
-        <Wrapper>
-          {rows.map((rowItems, rowIndex) => <GridRow rowItems={rowItems} rowIndex={rowIndex} />)}
-        </Wrapper>
-        {createPortal(
-          <DragOverlay
-            adjustScale={false}
-          >
-            {activeItemKey ? (
-              <Item columns={DroppablesMap[activeItemKey].columns} dragOverlay>{DroppablesMap[activeItemKey].content}</Item>
-            ) : null}
-          </DragOverlay>,
-          document.body
-        )}
-      </DndContext>
-    </AppContainer>
+    <>
+      <AddingRow>
+        {getUnusedItems(dataRows).map((key) => (
+          <AddItemButton onClick={() => addItem(key, DroppablesMap[key!].columns)}>+ {DroppablesMap[key!].content}: {DroppablesMap[key!].columns}</AddItemButton>
+        ))}
+      </AddingRow>
+      <AppContainer className="App">
+        <DndContext
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
+          onDragCancel={handleDragCancel}
+        >
+          <Wrapper>
+            {dataRows.map((rowItems, rowIndex) => <GridRow onDelete={handleDelete} rowItems={rowItems} rowIndex={rowIndex} />)}
+          </Wrapper>
+          {createPortal(
+            <DragOverlay
+              adjustScale={false}
+            >
+              {activeItem ? (
+                <Item columns={DroppablesMap[activeItem].columns} dragOverlay>{DroppablesMap[activeItem].content}</Item>
+              ) : null}
+            </DragOverlay>,
+            document.body
+          )}
+        </DndContext>
+      </AppContainer>
+    </>
   );
 }
 
 export default App;
 
-export const GridRow = ({ rowItems, rowIndex}: { rowItems: DroppableRowContentType[], rowIndex: number }) => {
+export const GridRow = ({ rowItems, rowIndex, onDelete }: { rowItems: DroppableRowContentType[], rowIndex: number, onDelete?: (rowIndex: number, index: number, columns: number) => void }) => {
   const rowContent: React.ReactNode[] = [];
 
   for (let i = 0; i < rowItems.length; i++) {
@@ -201,8 +126,9 @@ export const GridRow = ({ rowItems, rowIndex}: { rowItems: DroppableRowContentTy
         key={`${rowIndex}-${i}-${itemKey}`}
         isEmpty={!itemKey}
         index={i}
+        onDelete={onDelete}
       >
-        <Item fake={!itemKey} columns={itemKey ? DroppablesMap[itemKey].columns : 1}>{itemKey ? DroppablesMap[itemKey].content : 'EMPTY'}</Item>
+        <Item isEmpty={!itemKey} columns={itemKey ? DroppablesMap[itemKey].columns : 1}>{itemKey ? DroppablesMap[itemKey].content : 'EMPTY'}</Item>
       </DroppableRow.Slot>
     );
 
